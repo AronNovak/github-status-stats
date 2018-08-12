@@ -12,6 +12,12 @@ require_once __DIR__ . '/vendor/autoload.php';
 $username = $argv[1];
 
 $client = new Client();
+
+$token = file_get_contents(__DIR__ . '/.github-token');
+if (!empty($token)) {
+  $client->authenticate($token, NULL, $client::AUTH_HTTP_TOKEN);
+}
+
 $events = $client->api('user')->publicEvents($username);
 $stats = [];
 foreach ($events as $event) {
