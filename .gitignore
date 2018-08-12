@@ -2,6 +2,10 @@
 ################
 .github-token
 
+# GitHub Cache #
+################
+.github-cache
+
 # Composer #
 ############
 vendor

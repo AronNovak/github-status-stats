@@ -6,16 +6,36 @@
  */
 
 use Github\Client;
+use League\Flysystem\Adapter\Local;
+use League\Flysystem\Filesystem;
+use Cache\Adapter\Filesystem\FilesystemCachePool;
 
 require_once __DIR__ . '/vendor/autoload.php';
 
-$username = $argv[1];
+$username = isset($argv[1]) ? $argv[1] : NULL;
+if (empty($username)) {
+  exit(1);
+}
 
 $client = new Client();
 
-$token = file_get_contents(__DIR__ . '/.github-token');
-if (!empty($token)) {
-  $client->authenticate($token, NULL, $client::AUTH_HTTP_TOKEN);
+// Activate caching.
+$cache_target = __DIR__ . '/.github-cache/';
+if (!is_dir($cache_target)) {
+  mkdir($cache_target);
+}
+$filesystemAdapter = new Local($cache_target);
+$filesystem = new Filesystem($filesystemAdapter);
+$pool = new FilesystemCachePool($filesystem);
+$client->addCache($pool);
+
+// Optionally authenticate.
+$token_path = __DIR__ . '/.github-token';
+if (is_file($token_path)) {
+  $token = file_get_contents($token_path);
+  if (!empty($token)) {
+    $client->authenticate($token, NULL, $client::AUTH_HTTP_TOKEN);
+  }
 }
 
 $events = $client->api('user')->publicEvents($username);
@@ -24,12 +44,28 @@ foreach ($events as $event) {
   if ($event['type'] != 'PushEvent') {
     continue;
   }
+  $timestamp = strtotime($event['created_at']);
+  $hour_of_day = date('G', $timestamp);
+  if (!isset($stats[$hour_of_day])) {
+    $stats[$hour_of_day] = [];
+  }
   list($owner, $repo) = explode('/', $event['repo']['name']);
   $commits = $event['payload']['commits'];
   foreach ($commits as $commit) {
-    $statuses = $client->api('repo')->statuses()->show($owner, $repo, $commit['sha']);
+    $statuses = $client->api('repo')
+      ->statuses()
+      ->show($owner, $repo, $commit['sha']);
+
     foreach ($statuses as $status) {
-      $stats[$status['state']]++;
+      if ($status['state'] == 'pending') {
+        continue;
+      }
+      $counter = &$stats[$hour_of_day][$status['state']];
+      if (!isset($counter)) {
+        $counter = 0;
+      }
+
+      $counter++;
     }
   }
 }
