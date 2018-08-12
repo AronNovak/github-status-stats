@@ -2,7 +2,7 @@ language: php
 php:
   - 7.1
   - 7.2
-before_install
+before_install:
   - export PATH="$HOME/.config/composer/vendor/bin:$PATH"
 before_script:
   - composer global require "squizlabs/php_codesniffer=*"
