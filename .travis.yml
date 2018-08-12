@@ -1,5 +1,10 @@
 language: php
 php:
-  - 7.1.9
+  - 7.1
+  - 7.2
+before_script:
+  - pyrus install pear/PHP_CodeSniffer
+  - phpenv rehash
 script:
-  php -l github-status-stats.php
+  - php -l github-status-stats.php
+  - phpcs --standard=PSR1 github-status-stats.php
