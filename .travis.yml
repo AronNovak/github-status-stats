@@ -1,0 +1,5 @@
+language: php
+php:
+  - 7.1.9
+script:
+  php -l github-status-stats.php
